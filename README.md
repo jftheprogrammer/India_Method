@@ -16,7 +16,7 @@ Implements key rotation for enhanced security
 
 Ensure you have Python installed along with the required dependencies: pip install pycryptodome
 
-**Usage**
+**Usage:**
 
 **How to Encrypt and Decrypt Data?**
 
@@ -40,17 +40,17 @@ cipher.encrypt_file("input.txt", "encrypted_output.txt")
 cipher.decrypt_file("encrypted_output.txt", "decrypted_output.txt")
 
 
-**Key Rotation**
+**Key Rotation:**
 
 new_key = os.urandom(32)
 cipher.rotate_key(new_key)
 
-**Security Considerations**
+**Security Considerations:**
 
 Always use a securely generated key (256 bits)
 Do not reuse nonces for the same key
 Ensure HMAC verification is successful before decrypting
 
-**License**
+**License:**
 
 This project is licensed under the MIT License.
