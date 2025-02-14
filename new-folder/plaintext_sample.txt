@@ -1,0 +1,8 @@
+This is a sample confidential file.
+
+It contains sensitive information that should be encrypted using the India Method Cipher.
+
+Only authorized users with the correct key should be able to decrypt and read this data.
+
+Handle with care!
+
