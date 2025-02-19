@@ -1,56 +1,68 @@
-# India_Method
+# India Method Encryption Algorithm
 
-**Overview:**
+## Overview
+India Method is a real-time encryption algorithm designed to provide secure and efficient encryption for data storage and transmission. Using AES encryption in CBC mode with SHA-256 key hashing, this method ensures confidentiality while maintaining high-speed processing.
 
-The India Method Cipher is a secure encryption algorithm based on ChaCha20 for encryption and HMAC-SHA256 for integrity verification. It ensures confidentiality, integrity, and authenticity of data.
+## Features
+- **Real-time encryption & decryption** – Fast and efficient processing.
+- **Strong security** – Uses AES-256 encryption with CBC mode.
+- **Lightweight** – Minimal computational overhead.
+- **Flexible** – Can be integrated into various systems.
+- **File Support** – Encrypt and decrypt files seamlessly.
 
-**Features:**
+## Installation
+Clone the repository:
+```bash
+git clone https://github.com/your-username/india-method.git
+cd india-method
+```
+Install dependencies:
+```bash
+pip install pycryptodome
+```
 
-Uses ChaCha20 stream cipher for high-speed encryption
-HMAC-SHA256 for message integrity verification
-Secure key derivation using HKDF
-Supports file encryption and decryption
-Implements key rotation for enhanced security
+## Usage
 
-**Installation**
+### Encrypting a Text String
+```python
+from india_method import IndiaMethod
 
-Ensure you have Python installed along with the required dependencies: pip install pycryptodome
+key = "your-secret-key"
+india = IndiaMethod(key)
 
-**Usage:**
+plaintext = "Hello, World!"
+encrypted = india.encrypt(plaintext)
+print("Encrypted:", encrypted)
+```
 
-**How to Encrypt and Decrypt Data?**
+### Decrypting a Text String
+```python
+decrypted = india.decrypt(encrypted)
+print("Decrypted:", decrypted)
+```
 
-import os
-from india_method_cipher import IndiaMethodCipher
+### Encrypting and Saving to a File
+```python
+with open("encrypted.txt", "w") as f:
+    f.write(encrypted)
+```
 
-key = os.urandom(32)  # Generate a secure 256-bit key
-nonce = os.urandom(16)  # Generate a unique 128-bit nonce
-cipher = IndiaMethodCipher(key)
+### Reading and Decrypting from a File
+```python
+with open("encrypted.txt", "r") as f:
+    loaded_encrypted = f.read()
 
-plaintext = b"Confidential Data"
-encrypted_data = cipher.encrypt(plaintext, nonce)
-decrypted_data = cipher.decrypt(encrypted_data)
-assert decrypted_data == plaintext
-print("Encryption and Decryption successful!")
+decrypted_from_file = india.decrypt(loaded_encrypted)
+print("Decrypted from file:", decrypted_from_file)
+```
 
+## License
+This project is licensed under the **MIT License**. You are free to use, modify, and distribute it under the terms of the license.
 
-**How to Encrypt and Decrypt Files?**
+## Contact
+👤 **Joshua L. Fernandez**  
+📍 Laoag City, Ilocos Norte  
+✉ [Your Email or GitHub Profile Link]  
 
-cipher.encrypt_file("input.txt", "encrypted_output.txt")
-cipher.decrypt_file("encrypted_output.txt", "decrypted_output.txt")
+Feel free to contribute and improve this encryption method! 🚀
 
-
-**Key Rotation:**
-
-new_key = os.urandom(32)
-cipher.rotate_key(new_key)
-
-**Security Considerations:**
-
-Always use a securely generated key (256 bits)
-Do not reuse nonces for the same key
-Ensure HMAC verification is successful before decrypting
-
-**License:**
-
-This project is licensed under the MIT License.
