@@ -42,7 +42,7 @@ india-method-cipher/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/india-method-cipher.git
+git clone https://github.com/jftheprogrammer/india-method-cipher.git
 cd india-method-cipher
 ```
 
@@ -126,10 +126,10 @@ Comprehensive logging is implemented with configurable log levels:
 - Enhanced Key Management
 
 ## License
-[Specify your license, e.g., MIT, Apache 2.0]
+MIT
 
 ## Author
-[Your Name]
+Joshua L. Fernandez
 Master's Dissertation Project
 
 ## References
