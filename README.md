@@ -1,68 +1,138 @@
-# India Method Encryption Algorithm
+# Enhanced India Method Cipher
 
 ## Overview
-India Method is a real-time encryption algorithm designed to provide secure and efficient encryption for data storage and transmission. Using AES encryption in CBC mode with SHA-256 key hashing, this method ensures confidentiality while maintaining high-speed processing.
+The Enhanced India Method Cipher is an advanced cryptographic implementation designed for secure data encryption and decryption. This project provides a robust, flexible, and secure encryption solution with multiple features to support advanced cryptographic research.
 
 ## Features
-- **Real-time encryption & decryption** – Fast and efficient processing.
-- **Strong security** – Uses AES-256 encryption with CBC mode.
-- **Lightweight** – Minimal computational overhead.
-- **Flexible** – Can be integrated into various systems.
-- **File Support** – Encrypt and decrypt files seamlessly.
+
+### Cryptographic Capabilities
+- Multiple Cipher Support (ChaCha20, AES-GCM)
+- Advanced Key Derivation using Scrypt
+- Flexible Key Rotation Policies
+- Memory-Efficient File Encryption
+- Side-Channel Attack Mitigation
+
+### Security Mechanisms
+- Constant-time Padding
+- Comprehensive Integrity Checks
+- Detailed Logging
+- Adaptive Key Management
+
+## Project Structure
+```
+india-method-cipher/
+│
+├── src/
+│   └── IndiaMethodCipher.py        # Main cryptographic implementation
+│
+├── tests/
+│   ├── unitTest.py                 # Comprehensive unit tests
+│   └── integrationTest.py          # Performance and integration tests
+│
+├── README.md                       # Project documentation
+└── requirements.txt                # Python dependencies
+```
+
+## Prerequisites
+- Python 3.8+
+- PyCryptodome Library
+- unittest module
 
 ## Installation
-Clone the repository:
+
+1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/india-method.git
-cd india-method
+git clone https://github.com/your-username/india-method-cipher.git
+cd india-method-cipher
 ```
-Install dependencies:
+
+2. Install dependencies:
 ```bash
-pip install pycryptodome
+pip install -r requirements.txt
 ```
 
-## Usage
+## Usage Examples
 
-### Encrypting a Text String
+### Basic Encryption
 ```python
-from india_method import IndiaMethod
+from IndiaMethodCipher import EnhancedIndiaMethodCipher, CipherType
 
-key = "your-secret-key"
-india = IndiaMethod(key)
+# Initialize cipher
+key = os.urandom(32)
+cipher = EnhancedIndiaMethodCipher(
+    key, 
+    cipher_type=CipherType.CHACHA20
+)
 
-plaintext = "Hello, World!"
-encrypted = india.encrypt(plaintext)
-print("Encrypted:", encrypted)
+# Encrypt data
+plaintext = b"Confidential Information"
+encrypted_data = cipher.encrypt(plaintext)
+decrypted_data = cipher.decrypt(encrypted_data)
 ```
 
-### Decrypting a Text String
+### File Encryption
 ```python
-decrypted = india.decrypt(encrypted)
-print("Decrypted:", decrypted)
+# Encrypt entire file
+cipher.encrypt_file("input.txt", "encrypted.bin")
+cipher.decrypt_file("encrypted.bin", "decrypted.txt")
 ```
 
-### Encrypting and Saving to a File
-```python
-with open("encrypted.txt", "w") as f:
-    f.write(encrypted)
+## Running Tests
+
+### Unit Tests
+```bash
+python -m unittest tests/unitTest.py
 ```
 
-### Reading and Decrypting from a File
-```python
-with open("encrypted.txt", "r") as f:
-    loaded_encrypted = f.read()
-
-decrypted_from_file = india.decrypt(loaded_encrypted)
-print("Decrypted from file:", decrypted_from_file)
+### Integration Tests
+```bash
+python tests/integrationTest.py
 ```
+
+## Performance Benchmarks
+The `integrationTest.py` script includes comprehensive performance benchmarking across different:
+- Cipher Types
+- Data Sizes
+- Encryption Scenarios
+
+## Key Rotation Policies
+- `FIXED_INTERVAL`: Rotate key after fixed number of uses
+- `TIME_BASED`: Rotate key periodically
+- `USAGE_BASED`: Custom rotation strategy
+
+## Security Considerations
+- 256-bit key length
+- Adaptive key derivation
+- Side-channel attack resistance
+- Constant-time comparisons
+
+## Logging
+Comprehensive logging is implemented with configurable log levels:
+- DEBUG: Detailed debugging information
+- INFO: General operational events
+- ERROR: Error tracking
+
+## Dissertation Research Points
+1. Advanced Cryptographic Design
+2. Side-Channel Attack Mitigation
+3. Performance Analysis
+4. Multi-Algorithm Cryptographic Frameworks
+5. Adaptive Key Management Strategies
+
+## Potential Future Improvements
+- Hardware Security Module (HSM) Integration
+- Post-Quantum Cryptography Adaptation
+- Extended Authentication Mechanisms
+- Enhanced Key Management
 
 ## License
-This project is licensed under the **MIT License**. You are free to use, modify, and distribute it under the terms of the license.
+[Specify your license, e.g., MIT, Apache 2.0]
 
-## Contact
-👤 **Joshua L. Fernandez**  
-📍 Laoag City, Ilocos Norte  
-✉ [Your Email or GitHub Profile Link]  
+## Author
+[Your Name]
+Master's Dissertation Project
 
-Feel free to contribute and improve this encryption method! 🚀
-
+## References
+- NIST Cryptographic Standards
+- Modern Cryptography Principles
+- Side-Channel Attack Mitigation Techniques
