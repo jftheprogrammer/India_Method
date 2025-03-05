@@ -1,0 +1,5 @@
+pycryptodome==3.20.0
+typing==3.7.4.3
+pytest==7.4.3
+coverage==7.4.0
+logging==0.5.1.2
