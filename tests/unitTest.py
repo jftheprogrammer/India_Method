@@ -3,7 +3,7 @@ import unittest
 import logging
 from typing import List, Dict, Any
 
-from india_method_cipher import EnhancedIndiaMethodCipher, CipherType, KeyRotationPolicy
+from indiaMethodCipher import EnhancedIndiaMethodCipher, CipherType, KeyRotationPolicy
 
 class TestEnhancedIndiaMethodCipher(unittest.TestCase):
     @classmethod
@@ -53,7 +53,6 @@ class TestEnhancedIndiaMethodCipher(unittest.TestCase):
         encrypted_data = self.cipher.encrypt(plaintext, metadata=metadata)
         decrypted_data = self.cipher.decrypt(encrypted_data, metadata=metadata)
         self.assertEqual(decrypted_data, plaintext)
-        # Test with different metadata (should fail or differ)
         with self.assertRaises(Exception):
             self.cipher.decrypt(encrypted_data, metadata={"author": "Different"})
 
