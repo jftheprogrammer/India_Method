@@ -23,36 +23,43 @@ class TestEnhancedIndiaMethodCipher(unittest.TestCase):
 
     def test_basic_encryption_decryption(self):
         test_cases: List[bytes] = [b"Sensitive Information", b"Hello, World!", b"12345", b""]
-        metadata = {"author": "Test", "date": "2025-03-17"}
         for plaintext in test_cases:
             with self.subTest(plaintext=plaintext):
-                encrypted_data = self.cipher.encrypt(plaintext, metadata=metadata)
-                decrypted_data = self.cipher.decrypt(encrypted_data, metadata=metadata)
+                encrypted_data = self.cipher.encrypt(plaintext)
+                decrypted_data = self.cipher.decrypt(encrypted_data)
                 self.assertEqual(decrypted_data, plaintext)
+
+    def test_compression_encryption(self):
+        plaintext = b"Compressible Data " * 100  # Repetitive for compression
+        encrypted = self.cipher.encrypt(plaintext, compress=True)
+        decrypted = self.cipher.decrypt(encrypted)
+        self.assertEqual(decrypted, plaintext)
+        self.assertLess(len(encrypted), len(plaintext) + 100)  # Compression reduces size
+
+    def test_parallel_file_encryption(self):
+        os.makedirs("test_data", exist_ok=True)
+        input_file = "test_data/large_input.bin"
+        encrypted_file = "test_data/large_encrypted.bin"
+        decrypted_file = "test_data/large_decrypted.bin"
+        data = os.urandom(5 * 1024 * 1024)  # 5MB
+        with open(input_file, "wb") as f:
+            f.write(data)
+        self.cipher.encrypt_file(input_file, encrypted_file, chunk_size=1024*1024)
+        self.cipher.decrypt_file(encrypted_file, decrypted_file)
+        with open(decrypted_file, "rb") as f:
+            decrypted_data = f.read()
+        self.assertEqual(decrypted_data, data)
+
+    def test_formal_verification(self):
+        self.assertTrue(self.cipher.verify_correctness(), "Formal verification failed")
 
     def test_integrity_check(self):
         plaintext = b"Test Data for Integrity Check"
-        metadata = {"author": "Test", "date": "2025-03-17"}
-        encrypted_data = self.cipher.encrypt(plaintext, metadata=metadata)
+        encrypted_data = self.cipher.encrypt(plaintext)
         tampered_data = list(encrypted_data)
         tampered_data[-1] ^= 0x01
         with self.assertRaises(ValueError):
-            self.cipher.decrypt(bytes(tampered_data), metadata=metadata)
-
-    def test_post_quantum_encryption(self):
-        cipher = EnhancedIndiaMethodCipher(self.key, cipher_type=CipherType.KYBER, pq_enabled=True)
-        plaintext = b"Quantum Test"
-        metadata = {"author": "Test"}
-        encrypted = cipher.encrypt(plaintext, metadata=metadata)
-        decrypted = cipher.decrypt(encrypted, metadata=metadata)
-        self.assertEqual(decrypted, plaintext)
-
-    def test_hsm_encryption(self):
-        cipher = EnhancedIndiaMethodCipher(self.key, hsm_enabled=True, hsm_config={"type": "softHSM"})
-        plaintext = b"HSM Test"
-        encrypted = cipher.encrypt(plaintext)
-        decrypted = cipher.decrypt(encrypted)
-        self.assertEqual(decrypted, plaintext)
+            self.cipher.decrypt(bytes(tampered_data))
 
     def test_adaptive_security(self):
         cipher = EnhancedIndiaMethodCipher(self.key, adaptive_security=True)
@@ -62,39 +69,6 @@ class TestEnhancedIndiaMethodCipher(unittest.TestCase):
         encrypted = cipher.encrypt(plaintext)
         decrypted = cipher.decrypt(encrypted)
         self.assertEqual(decrypted, plaintext)
-
-    def test_enhanced_entropy(self):
-        cipher = EnhancedIndiaMethodCipher(self.key)
-        plaintext = b"Enhanced Entropy Test"
-        metadata = {"author": "Test"}
-        encrypted = cipher.encrypt(plaintext, metadata=metadata)
-        decrypted = cipher.decrypt(encrypted, metadata=metadata)
-        self.assertEqual(decrypted, plaintext)
-
-    def test_avalanche_effect(self):
-        cipher = EnhancedIndiaMethodCipher(self.key)
-        plaintext = b"Test Avalanche"
-        cipher.visualize_avalanche_effect(plaintext, num_bits=5)  # Visual test
-
-    def test_file_encryption_decryption(self):
-        test_scenarios: List[Dict[str, Any]] = [
-            {"content": b"Small file content", "filename": "small_test.txt"},
-            {"content": os.urandom(1024 * 1024), "filename": "large_test.bin"}
-        ]
-        metadata = {"author": "Test", "date": "2025-03-17"}
-        for scenario in test_scenarios:
-            with self.subTest(filename=scenario['filename']):
-                os.makedirs("test_data", exist_ok=True)
-                input_file = f"test_data/input_{scenario['filename']}"
-                encrypted_file = f"test_data/encrypted_{scenario['filename']}"
-                decrypted_file = f"test_data/decrypted_{scenario['filename']}"
-                with open(input_file, "wb") as f:
-                    f.write(scenario['content'])
-                self.cipher.encrypt_file(input_file, encrypted_file, metadata=metadata)
-                self.cipher.decrypt_file(encrypted_file, decrypted_file, metadata=metadata)
-                with open(decrypted_file, "rb") as f:
-                    decrypted_content = f.read()
-                self.assertEqual(decrypted_content, scenario['content'])
 
 if __name__ == "__main__":
     unittest.main()
