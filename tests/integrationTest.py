@@ -2,10 +2,7 @@ import os
 import sys
 import logging
 from datetime import datetime
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from indiaMethodCipher import EnhancedIndiaMethodCipher, CipherType, KeyRotationPolicy
+from indiaMethodCipher import EnhancedIndiaMethodCipher, CipherType, KeyRotationPolicy, SecurityLevel
 
 class CryptoPerformanceAnalysis:
     def __init__(self):
@@ -20,9 +17,9 @@ class CryptoPerformanceAnalysis:
 
     def generate_test_scenarios(self):
         return [
-            {"name": "Small Document", "size": 1024, "cipher_type": CipherType.CHACHA20, "rotation_policy": KeyRotationPolicy.FIXED_INTERVAL},
-            {"name": "Medium Research Paper", "size": 1024 * 1024, "cipher_type": CipherType.AES_GCM, "rotation_policy": KeyRotationPolicy.TIME_BASED},
-            {"name": "Large Dataset", "size": 10 * 1024 * 1024, "cipher_type": CipherType.CHACHA20, "rotation_policy": None}
+            {"name": "Small PQ", "size": 1024, "cipher_type": CipherType.KYBER, "pq_enabled": True, "rotation_policy": None},
+            {"name": "Medium HSM", "size": 1024 * 1024, "cipher_type": CipherType.AES_GCM, "hsm_enabled": True, "rotation_policy": KeyRotationPolicy.TIME_BASED},
+            {"name": "Large Adaptive", "size": 10 * 1024 * 1024, "cipher_type": CipherType.CHACHA20, "adaptive_security": True, "rotation_policy": None}
         ]
 
     def run_comprehensive_test(self):
@@ -37,7 +34,10 @@ class CryptoPerformanceAnalysis:
                 cipher = EnhancedIndiaMethodCipher(
                     key,
                     cipher_type=scenario['cipher_type'],
-                    key_rotation_policy=scenario['rotation_policy']
+                    key_rotation_policy=scenario.get('rotation_policy'),
+                    pq_enabled=scenario.get('pq_enabled', False),
+                    hsm_enabled=scenario.get('hsm_enabled', False),
+                    adaptive_security=scenario.get('adaptive_security', False)
                 )
                 input_file = os.path.join(self.test_data_dir, f"{scenario['name']}_input.bin")
                 encrypted_file = os.path.join(self.test_data_dir, f"{scenario['name']}_encrypted.bin")
@@ -62,7 +62,13 @@ class CryptoPerformanceAnalysis:
         for scenario in scenarios:
             key = os.urandom(32)
             test_data = os.urandom(scenario['size'])
-            cipher = EnhancedIndiaMethodCipher(key, cipher_type=scenario['cipher_type'])
+            cipher = EnhancedIndiaMethodCipher(
+                key,
+                cipher_type=scenario['cipher_type'],
+                pq_enabled=scenario.get('pq_enabled', False),
+                hsm_enabled=scenario.get('hsm_enabled', False),
+                adaptive_security=scenario.get('adaptive_security', False)
+            )
             start_time = datetime.now()
             encrypted_data = cipher.encrypt(test_data, metadata=metadata)
             encryption_time = datetime.now() - start_time
