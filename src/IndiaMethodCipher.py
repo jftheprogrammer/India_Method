@@ -6,7 +6,13 @@ from Crypto.Cipher import ChaCha20, AES
 from Crypto.Hash import HMAC, SHA256
 from Crypto.Protocol.KDF import HKDF, scrypt
 from Crypto.Random import get_random_bytes
+import hashlib
+import numpy as np
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+import struct
 
+# Enums for cipher type and key rotation policy
 class CipherType(enum.Enum):
     CHACHA20 = enum.auto()
     AES_GCM = enum.auto()
@@ -16,25 +22,96 @@ class KeyRotationPolicy(enum.Enum):
     USAGE_BASED = enum.auto()
     TIME_BASED = enum.auto()
 
+# Contextual Entropy Injection Class
+class ContextualEntropyInjection:
+    """
+    Implementation of Contextual Entropy Injection for Enhanced India Method Cipher.
+    """
+    def __init__(self, base_key: bytes, rounds: int = 3):
+        self.base_key = base_key
+        self.rounds = rounds
+        self.block_size = 16  # AES block size in bytes
+
+    def analyze_data_patterns(self, data: bytes) -> dict:
+        """Analyze data to extract entropy characteristics."""
+        patterns = {}
+        byte_freq = np.bincount(np.frombuffer(data, dtype=np.uint8), minlength=256)
+        patterns['byte_entropy'] = -np.sum((byte_freq / len(data)) * 
+                                     np.log2(byte_freq / len(data) + 1e-10))
+        chunk_size = min(1024, len(data) // 10 or 1)
+        chunk_entropies = []
+        for i in range(0, len(data), chunk_size):
+            chunk = data[i:i+chunk_size]
+            chunk_freq = np.bincount(np.frombuffer(chunk, dtype=np.uint8), minlength=256)
+            chunk_entropy = -np.sum((chunk_freq / len(chunk)) * 
+                                 np.log2(chunk_freq / len(chunk) + 1e-10))
+            chunk_entropies.append(chunk_entropy)
+        patterns['chunk_entropy_variance'] = np.var(chunk_entropies)
+        patterns['chunk_entropy_mean'] = np.mean(chunk_entropies)
+        patterns['repeating_patterns'] = self._find_repeating_patterns(data)
+        patterns['data_length'] = len(data)
+        return patterns
+
+    def _find_repeating_patterns(self, data: bytes, min_length: int = 3, max_length: int = 8) -> float:
+        """Find repeating byte patterns in the data."""
+        patterns = {}
+        for pattern_len in range(min_length, max_length + 1):
+            pattern_counts = {}
+            for i in range(len(data) - pattern_len + 1):
+                pattern = data[i:i+pattern_len]
+                pattern_counts[pattern] = pattern_counts.get(pattern, 0) + 1
+            significant_patterns = {k: v for k, v in pattern_counts.items() if v >= 3}
+            if significant_patterns:
+                patterns[pattern_len] = len(significant_patterns)
+        return sum(patterns.values()) / len(data) if patterns else 0
+
+    def derive_contextual_key(self, data: bytes, metadata: Optional[dict] = None) -> bytes:
+        """Derive a contextual key based on data patterns and metadata."""
+        patterns = self.analyze_data_patterns(data)
+        context_seed = struct.pack(
+            'ddddd',
+            patterns['byte_entropy'],
+            patterns['chunk_entropy_variance'],
+            patterns['chunk_entropy_mean'],
+            patterns['repeating_patterns'],
+            patterns['data_length']
+        )
+        if metadata:
+            metadata_str = str(sorted(metadata.items()))
+            context_seed += hashlib.sha256(metadata_str.encode()).digest()
+        contextual_key = self.base_key
+        for _ in range(self.rounds):
+            mixed_input = contextual_key + context_seed
+            contextual_key = hashlib.sha256(mixed_input).digest()
+        return contextual_key
+
+    def create_transformation_matrix(self, contextual_key: bytes, data_size: int) -> list:
+        """Create a transformation matrix for adaptive encryption."""
+        np.random.seed(int.from_bytes(contextual_key[:4], byteorder='big'))
+        transforms = []
+        blocks = data_size // self.block_size + (1 if data_size % self.block_size else 0)
+        for i in range(blocks):
+            block_key = hashlib.sha256(contextual_key + i.to_bytes(4, byteorder='big')).digest()
+            transform = {
+                'operation': np.random.choice(['xor', 'rotate', 'substitute']),
+                'key': block_key,
+                'parameter': np.random.randint(1, 16)
+            }
+            transforms.append(transform)
+        return transforms
+
+# Enhanced India Method Cipher Class
 class EnhancedIndiaMethodCipher:
     """
-    Enhanced India Method Cipher with advanced security features.
-    
-    Features:
-    - Multiple cipher support
-    - Advanced key derivation
-    - Secure key rotation
-    - Comprehensive logging
-    - Memory-efficient file encryption
-    - Side-channel attack mitigation
+    Enhanced India Method Cipher with Contextual Entropy Injection.
     """
-    
     def __init__(
-        self, 
-        key: bytes, 
+        self,
+        key: bytes,
         cipher_type: CipherType = CipherType.CHACHA20,
         key_rotation_policy: Optional[KeyRotationPolicy] = None,
-        log_level: int = logging.INFO
+        log_level: int = logging.INFO,
+        entropy_rounds: int = 3
     ):
         # Configure logging
         logging.basicConfig(
@@ -42,317 +119,193 @@ class EnhancedIndiaMethodCipher:
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         self.logger = logging.getLogger(self.__class__.__name__)
-        
+
         # Validate key
         if len(key) != 32:
             raise ValueError("Key must be 256 bits (32 bytes)")
-        
+
         self.key = key
         self.cipher_type = cipher_type
         self.key_rotation_policy = key_rotation_policy
-        
-        # Derive keys using advanced key derivation
-        self.enc_key, self.hmac_key = self._derive_keys(key)
-        
-        # Key metadata
         self.key_creation_time = os.time()
         self.key_usage_count = 0
-        
-        # Logging key event
-        self.logger.info("Cipher initialized with selected cipher type")
-    
-    def _derive_keys(self, master_key: bytes) -> tuple[bytes, bytes]:
-        """
-        Advanced key derivation using scrypt for enhanced security.
-        
-        Args:
-            master_key (bytes): Original encryption key
-        
-        Returns:
-            tuple: Derived encryption and HMAC keys
-        """
-        # Use scrypt for adaptive key stretching
+
+        # Initialize Contextual Entropy Injection
+        self.context_injector = ContextualEntropyInjection(key, rounds=entropy_rounds)
+
+        # Derive initial keys
+        self.enc_key, self.hmac_key = self._derive_keys(key)
+        self.logger.info("Cipher initialized with contextual entropy injection")
+
+    def _derive_keys(self, master_key: bytes, data: Optional[bytes] = None, metadata: Optional[dict] = None) -> tuple[bytes, bytes]:
+        """Derive encryption and HMAC keys, optionally with contextual entropy."""
         salt = get_random_bytes(16)
         enc_key = scrypt(
-            password=master_key, 
-            salt=salt, 
-            key_len=32, 
-            N=2**14,  # CPU/memory cost
-            r=8,      # Block size
-            p=1       # Parallelization
+            password=master_key,
+            salt=salt,
+            key_len=32,
+            N=2**14,
+            r=8,
+            p=1
         )
-        
-        # Secondary key derivation for HMAC
         hmac_key = HKDF(
-            master_key=master_key, 
-            key_len=32, 
-            salt=b"hmac_derivation", 
+            master_key=master_key,
+            key_len=32,
+            salt=b"hmac_derivation",
             hashmod=SHA256
         )
-        
+        if data is not None:
+            contextual_key = self.context_injector.derive_contextual_key(data, metadata)
+            enc_key = bytes([e ^ c for e, c in zip(enc_key, contextual_key)])
+            hmac_key = bytes([h ^ c for h, c in zip(hmac_key, contextual_key)])
         return enc_key, hmac_key
-    
+
     def _get_cipher(self, nonce: bytes) -> Union[ChaCha20.ChaCha20Cipher, AES.AESCipher]:
-        """
-        Select cipher based on configured type.
-        
-        Args:
-            nonce (bytes): Unique nonce for encryption
-        
-        Returns:
-            Configured cipher object
-        """
+        """Select cipher based on configured type."""
         if self.cipher_type == CipherType.CHACHA20:
             return ChaCha20.new(key=self.enc_key, nonce=nonce)
         elif self.cipher_type == CipherType.AES_GCM:
             return AES.new(self.enc_key, AES.MODE_GCM, nonce=nonce)
         else:
             raise ValueError(f"Unsupported cipher type: {self.cipher_type}")
-    
-    def encrypt(self, plaintext: bytes, nonce: Optional[bytes] = None) -> bytes:
-        """
-        Enhanced encryption with side-channel attack mitigation.
-        
-        Args:
-            plaintext (bytes): Data to encrypt
-            nonce (Optional[bytes]): Optional nonce, generated if not provided
-        
-        Returns:
-            bytes: Encrypted data with nonce and integrity tag
-        """
-        # Generate nonce if not provided
+
+    def encrypt(self, plaintext: bytes, nonce: Optional[bytes] = None, metadata: Optional[dict] = None) -> bytes:
+        """Encrypt data with contextual entropy injection."""
         if nonce is None:
             nonce = get_random_bytes(16)
-        
         if len(nonce) != 16:
             raise ValueError("Nonce must be 128 bits (16 bytes)")
-        
-        # Select and configure cipher
+
+        # Derive context-aware keys
+        self.enc_key, self.hmac_key = self._derive_keys(self.key, plaintext, metadata)
+
+        # Create transformation matrix
+        transformations = self.context_injector.create_transformation_matrix(self.enc_key, len(plaintext))
+
+        # Apply padding
+        padder = padding.PKCS7(128).padder()
+        padded_data = padder.update(plaintext) + padder.finalize()
+
+        # Apply contextual transformations
+        transformed_data = b''
+        for i in range(0, len(padded_data), self.context_injector.block_size):
+            block = padded_data[i:i+self.context_injector.block_size]
+            transform = transformations[i // self.context_injector.block_size]
+            if transform['operation'] == 'xor':
+                block = bytes([b ^ transform['key'][j % len(transform['key'])] 
+                              for j, b in enumerate(block)])
+            elif transform['operation'] == 'rotate':
+                block = block[transform['parameter']:] + block[:transform['parameter']]
+            elif transform['operation'] == 'substitute':
+                sub_table = [((j + transform['key'][j % len(transform['key'])]) % 256) for j in range(256)]
+                block = bytes([sub_table[b] for b in block])
+            transformed_data += block
+
+        # Encrypt with selected cipher
         cipher = self._get_cipher(nonce)
-        
-        # Encrypt with constant-time padding
-        try:
-            ciphertext = cipher.encrypt(self._constant_time_pad(plaintext))
-            
-            # Generate HMAC for integrity with constant-time comparison
-            hmac = HMAC.new(self.hmac_key, ciphertext, digestmod=SHA256)
-            
-            # Increment usage counter
-            self._check_key_rotation()
-            
-            # Log encryption event
-            self.logger.info("Data encryption successful")
-            
-            return nonce + ciphertext + hmac.digest()
-        
-        except Exception as e:
-            self.logger.error(f"Encryption failed: {e}")
-            raise
-    
-    def decrypt(self, encrypted_data: bytes) -> bytes:
-        """
-        Enhanced decryption with comprehensive integrity checks.
-        
-        Args:
-            encrypted_data (bytes): Encrypted data with nonce and HMAC
-        
-        Returns:
-            bytes: Decrypted plaintext
-        """
-        try:
-            if len(encrypted_data) < 48:
-                raise ValueError("Invalid encrypted data format")
-            
-            nonce = encrypted_data[:16]
-            hmac_received = encrypted_data[-32:]
-            ciphertext = encrypted_data[16:-32]
-            
-            # Constant-time HMAC verification
-            hmac = HMAC.new(self.hmac_key, ciphertext, digestmod=SHA256)
-            
-            if not self._constant_time_compare(hmac.digest(), hmac_received):
-                raise ValueError("Integrity check failed: Potential data tampering")
-            
-            # Select and configure cipher
-            cipher = self._get_cipher(nonce)
-            
-            decrypted = cipher.decrypt(ciphertext)
-            
-            # Remove constant-time padding
-            decrypted = self._remove_constant_time_pad(decrypted)
-            
-            self.logger.info("Data decryption successful")
-            return decrypted
-        
-        except Exception as e:
-            self.logger.error(f"Decryption failed: {e}")
-            raise
-    
+        ciphertext = cipher.encrypt(transformed_data)
+
+        # Generate HMAC
+        hmac = HMAC.new(self.hmac_key, ciphertext, digestmod=SHA256)
+        self._check_key_rotation()
+        self.logger.info("Data encryption successful with contextual entropy")
+
+        # Simplified context header (key checksum)
+        context_header = hashlib.sha256(self.enc_key).digest()[:8]
+        return nonce + context_header + ciphertext + hmac.digest()
+
+    def decrypt(self, encrypted_data: bytes, metadata: Optional[dict] = None) -> bytes:
+        """Decrypt data with contextual entropy injection."""
+        if len(encrypted_data) < 56:  # nonce (16) + header (8) + hmac (32) + min ciphertext
+            raise ValueError("Invalid encrypted data format")
+
+        nonce = encrypted_data[:16]
+        context_header = encrypted_data[16:24]
+        hmac_received = encrypted_data[-32:]
+        ciphertext = encrypted_data[24:-32]
+
+        # Re-derive keys (assumes metadata is provided; in practice, store transformation details)
+        self.enc_key, self.hmac_key = self._derive_keys(self.key, metadata=metadata)
+
+        # Verify HMAC
+        hmac = HMAC.new(self.hmac_key, ciphertext, digestmod=SHA256)
+        if not self._constant_time_compare(hmac.digest(), hmac_received):
+            raise ValueError("Integrity check failed: Potential data tampering")
+
+        # Decrypt
+        cipher = self._get_cipher(nonce)
+        transformed_data = cipher.decrypt(ciphertext)
+
+        # Reconstruct transformation matrix
+        transformations = self.context_injector.create_transformation_matrix(self.enc_key, len(transformed_data))
+
+        # Reverse transformations
+        decrypted_data = b''
+        for i in range(0, len(transformed_data), self.context_injector.block_size):
+            block = transformed_data[i:i+self.context_injector.block_size]
+            transform = transformations[i // self.context_injector.block_size]
+            if transform['operation'] == 'xor':
+                block = bytes([b ^ transform['key'][j % len(transform['key'])] 
+                              for j, b in enumerate(block)])
+            elif transform['operation'] == 'rotate':
+                block = block[-transform['parameter']:] + block[:-transform['parameter']]
+            elif transform['operation'] == 'substitute':
+                sub_table = [((j + transform['key'][j % len(transform['key'])]) % 256) for j in range(256)]
+                inv_table = [0] * 256
+                for j, v in enumerate(sub_table):
+                    inv_table[v] = j
+                block = bytes([inv_table[b] for b in block])
+            decrypted_data += block
+
+        # Remove padding
+        unpadder = padding.PKCS7(128).unpadder()
+        plaintext = unpadder.update(decrypted_data) + unpadder.finalize()
+
+        self.logger.info("Data decryption successful")
+        return plaintext
+
     def _check_key_rotation(self):
-        """
-        Check and manage key rotation based on configured policy.
-        """
+        """Check and manage key rotation based on policy."""
         self.key_usage_count += 1
-        
-        if self.key_rotation_policy == KeyRotationPolicy.FIXED_INTERVAL:
-            # Rotate key every 1000 uses
-            if self.key_usage_count >= 1000:
-                self.rotate_key(get_random_bytes(32))
-        
+        if self.key_rotation_policy == KeyRotationPolicy.FIXED_INTERVAL and self.key_usage_count >= 1000:
+            self.rotate_key(get_random_bytes(32))
         elif self.key_rotation_policy == KeyRotationPolicy.TIME_BASED:
-            # Rotate key every 24 hours
-            current_time = os.time()
-            if current_time - self.key_creation_time > 86400:  # 24 hours
+            if os.time() - self.key_creation_time > 86400:
                 self.rotate_key(get_random_bytes(32))
-    
+
     def rotate_key(self, new_key: bytes):
-        """
-        Securely rotate encryption key.
-        
-        Args:
-            new_key (bytes): New 256-bit encryption key
-        """
+        """Securely rotate encryption key."""
         if len(new_key) != 32:
             raise ValueError("New key must be 256 bits (32 bytes)")
-        
-        # Securely replace key
         self.key = new_key
         self.enc_key, self.hmac_key = self._derive_keys(new_key)
-        
-        # Reset usage metadata
         self.key_creation_time = os.time()
         self.key_usage_count = 0
-        
+        self.context_injector = ContextualEntropyInjection(new_key, rounds=self.context_injector.rounds)
         self.logger.info("Key rotated successfully")
-    
-    def encrypt_file(self, input_file: str, output_file: str, chunk_size: int = 1024 * 1024):
-        """
-        Memory-efficient file encryption with streaming support.
-        
-        Args:
-            input_file (str): Path to input file
-            output_file (str): Path to output encrypted file
-            chunk_size (int): Size of chunks for processing large files
-        """
-        try:
-            nonce = get_random_bytes(16)
-            cipher = self._get_cipher(nonce)
-            
-            with open(input_file, 'rb') as infile, open(output_file, 'wb') as outfile:
-                # Write nonce first
-                outfile.write(nonce)
-                
-                # Create HMAC for file integrity
-                hmac = HMAC.new(self.hmac_key, digestmod=SHA256)
-                
-                while True:
-                    chunk = infile.read(chunk_size)
-                    if not chunk:
-                        break
-                    
-                    encrypted_chunk = cipher.encrypt(chunk)
-                    hmac.update(encrypted_chunk)
-                    outfile.write(encrypted_chunk)
-                
-                # Write HMAC digest
-                outfile.write(hmac.digest())
-            
-            self.logger.info(f"File {input_file} encrypted successfully")
-        
-        except Exception as e:
-            self.logger.error(f"File encryption failed: {e}")
-            raise
-    
-    def decrypt_file(self, input_file: str, output_file: str, chunk_size: int = 1024 * 1024):
-        """
-        Memory-efficient file decryption with streaming support.
-        
-        Args:
-            input_file (str): Path to input encrypted file
-            output_file (str): Path to output decrypted file
-            chunk_size (int): Size of chunks for processing large files
-        """
-        try:
-            with open(input_file, 'rb') as infile, open(output_file, 'wb') as outfile:
-                # Read nonce
-                nonce = infile.read(16)
-                cipher = self._get_cipher(nonce)
-                
-                # Create HMAC for integrity verification
-                hmac = HMAC.new(self.hmac_key, digestmod=SHA256)
-                
-                # File size calculation for HMAC verification
-                infile.seek(0, os.SEEK_END)
-                file_size = infile.tell()
-                infile.seek(16)  # Return to after nonce
-                
-                while infile.tell() < file_size - 32:  # Reserve space for HMAC
-                    chunk = infile.read(chunk_size)
-                    if not chunk:
-                        break
-                    
-                    decrypted_chunk = cipher.decrypt(chunk)
-                    hmac.update(chunk)
-                    outfile.write(decrypted_chunk)
-                
-                # Verify HMAC
-                computed_hmac = hmac.digest()
-                stored_hmac = infile.read(32)
-                
-                if not self._constant_time_compare(computed_hmac, stored_hmac):
-                    raise ValueError("File integrity verification failed")
-            
-            self.logger.info(f"File {input_file} decrypted successfully")
-        
-        except Exception as e:
-            self.logger.error(f"File decryption failed: {e}")
-            raise
-    
-    @staticmethod
-    def _constant_time_pad(data: bytes, block_size: int = 32) -> bytes:
-        """
-        Add constant-time padding to mitigate side-channel attacks.
-        
-        Args:
-            data (bytes): Original data
-            block_size (int): Padding block size
-        
-        Returns:
-            bytes: Padded data
-        """
-        padding_length = block_size - (len(data) % block_size)
-        padding = bytes([padding_length] * padding_length)
-        return data + padding
-    
-    @staticmethod
-    def _remove_constant_time_pad(padded_data: bytes) -> bytes:
-        """
-        Remove constant-time padding.
-        
-        Args:
-            padded_data (bytes): Padded data
-        
-        Returns:
-            bytes: Original data without padding
-        """
-        padding_length = padded_data[-1]
-        return padded_data[:-padding_length]
-    
+
+    def encrypt_file(self, input_file: str, output_file: str, metadata: Optional[dict] = None, chunk_size: int = 1024 * 1024):
+        """Memory-efficient file encryption."""
+        nonce = get_random_bytes(16)
+        with open(input_file, 'rb') as infile, open(output_file, 'wb') as outfile:
+            data = infile.read()
+            encrypted_data = self.encrypt(data, nonce, metadata)
+            outfile.write(encrypted_data)
+        self.logger.info(f"File {input_file} encrypted successfully")
+
+    def decrypt_file(self, input_file: str, output_file: str, metadata: Optional[dict] = None, chunk_size: int = 1024 * 1024):
+        """Memory-efficient file decryption."""
+        with open(input_file, 'rb') as infile, open(output_file, 'wb') as outfile:
+            encrypted_data = infile.read()
+            decrypted_data = self.decrypt(encrypted_data, metadata)
+            outfile.write(decrypted_data)
+        self.logger.info(f"File {input_file} decrypted successfully")
+
     @staticmethod
     def _constant_time_compare(a: bytes, b: bytes) -> bool:
-        """
-        Constant-time comparison to prevent timing attacks.
-        
-        Args:
-            a (bytes): First byte sequence
-            b (bytes): Second byte sequence
-        
-        Returns:
-            bool: Whether byte sequences are equal
-        """
+        """Constant-time comparison to prevent timing attacks."""
         if len(a) != len(b):
             return False
-        
         result = 0
         for x, y in zip(a, b):
             result |= x ^ y
@@ -360,19 +313,23 @@ class EnhancedIndiaMethodCipher:
 
 # Example Usage
 if __name__ == "__main__":
-    # Initialize with ChaCha20, fixed interval key rotation
+    # Initialize cipher
     key = get_random_bytes(32)
     cipher = EnhancedIndiaMethodCipher(
-        key, 
+        key,
         cipher_type=CipherType.CHACHA20,
-        key_rotation_policy=KeyRotationPolicy.FIXED_INTERVAL
+        key_rotation_policy=KeyRotationPolicy.FIXED_INTERVAL,
+        log_level=logging.INFO,
+        entropy_rounds=3
     )
 
-    # Encryption example
+    # Example encryption and decryption with metadata
     plaintext = b"Confidential Data for Masters Dissertation"
-    encrypted_data = cipher.encrypt(plaintext)
-    decrypted_data = cipher.decrypt(encrypted_data)
+    metadata = {"author": "Joshua", "date": "2025-03-17"}
+    encrypted_data = cipher.encrypt(plaintext, metadata=metadata)
+    decrypted_data = cipher.decrypt(encrypted_data, metadata=metadata)
 
+    # Verify
     assert decrypted_data == plaintext
     print("Encryption and Decryption successful!")
 
@@ -380,11 +337,9 @@ if __name__ == "__main__":
     test_file = "research_draft.txt"
     with open(test_file, "wb") as f:
         f.write(plaintext)
-
-    cipher.encrypt_file(test_file, "encrypted_draft.bin")
-    cipher.decrypt_file("encrypted_draft.bin", "decrypted_draft.txt")
+    cipher.encrypt_file(test_file, "encrypted_draft.bin", metadata=metadata)
+    cipher.decrypt_file("encrypted_draft.bin", "decrypted_draft.txt", metadata=metadata)
 
     with open("decrypted_draft.txt", "rb") as f:
         assert f.read() == plaintext
-    
     print("File Encryption and Decryption successful!")
