@@ -17,15 +17,14 @@ class CryptoPerformanceAnalysis:
 
     def generate_test_scenarios(self):
         return [
-            {"name": "Small PQ", "size": 1024, "cipher_type": CipherType.KYBER, "pq_enabled": True, "rotation_policy": None},
-            {"name": "Medium HSM", "size": 1024 * 1024, "cipher_type": CipherType.AES_GCM, "hsm_enabled": True, "rotation_policy": KeyRotationPolicy.TIME_BASED},
-            {"name": "Large Adaptive", "size": 10 * 1024 * 1024, "cipher_type": CipherType.CHACHA20, "adaptive_security": True, "rotation_policy": None}
+            {"name": "Small Compressed", "size": 1024, "cipher_type": CipherType.CHACHA20, "compress": True},
+            {"name": "Medium Parallel", "size": 5 * 1024 * 1024, "cipher_type": CipherType.AES_GCM, "chunk_size": 1024*1024},
+            {"name": "Large Adaptive", "size": 10 * 1024 * 1024, "cipher_type": CipherType.CHACHA20, "adaptive_security": True}
         ]
 
     def run_comprehensive_test(self):
         self.logger.info("Starting Comprehensive Crypto Test Suite")
         test_scenarios = self.generate_test_scenarios()
-        metadata = {"author": "Test", "date": "2025-03-17"}
         for scenario in test_scenarios:
             try:
                 self.logger.info(f"Testing Scenario: {scenario['name']}")
@@ -34,9 +33,6 @@ class CryptoPerformanceAnalysis:
                 cipher = EnhancedIndiaMethodCipher(
                     key,
                     cipher_type=scenario['cipher_type'],
-                    key_rotation_policy=scenario.get('rotation_policy'),
-                    pq_enabled=scenario.get('pq_enabled', False),
-                    hsm_enabled=scenario.get('hsm_enabled', False),
                     adaptive_security=scenario.get('adaptive_security', False)
                 )
                 input_file = os.path.join(self.test_data_dir, f"{scenario['name']}_input.bin")
@@ -44,8 +40,9 @@ class CryptoPerformanceAnalysis:
                 decrypted_file = os.path.join(self.test_data_dir, f"{scenario['name']}_decrypted.bin")
                 with open(input_file, 'wb') as f:
                     f.write(test_data)
-                cipher.encrypt_file(input_file, encrypted_file, metadata=metadata)
-                cipher.decrypt_file(encrypted_file, decrypted_file, metadata=metadata)
+                cipher.encrypt_file(input_file, encrypted_file, chunk_size=scenario.get('chunk_size', 1024*1024),
+                                   compress=scenario.get('compress', False))
+                cipher.decrypt_file(encrypted_file, decrypted_file)
                 with open(decrypted_file, 'rb') as f:
                     decrypted_data = f.read()
                 assert decrypted_data == test_data, f"Data mismatch in {scenario['name']}"
@@ -58,22 +55,19 @@ class CryptoPerformanceAnalysis:
         self.logger.info("Starting Performance Benchmarking")
         scenarios = self.generate_test_scenarios()
         results = []
-        metadata = {"author": "Test", "date": "2025-03-17"}
-        for scenario in scenarios:
+        for scenario in test_scenarios:
             key = os.urandom(32)
             test_data = os.urandom(scenario['size'])
             cipher = EnhancedIndiaMethodCipher(
                 key,
                 cipher_type=scenario['cipher_type'],
-                pq_enabled=scenario.get('pq_enabled', False),
-                hsm_enabled=scenario.get('hsm_enabled', False),
                 adaptive_security=scenario.get('adaptive_security', False)
             )
             start_time = datetime.now()
-            encrypted_data = cipher.encrypt(test_data, metadata=metadata)
+            encrypted_data = cipher.encrypt(test_data, compress=scenario.get('compress', False))
             encryption_time = datetime.now() - start_time
             start_time = datetime.now()
-            cipher.decrypt(encrypted_data, metadata=metadata)
+            cipher.decrypt(encrypted_data)
             decryption_time = datetime.now() - start_time
             results.append({
                 "scenario": scenario['name'],
