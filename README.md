@@ -1,142 +1,170 @@
 Enhanced India Method Cipher
-Overview
 
-The Enhanced India Method Cipher is an advanced cryptographic implementation designed for secure data encryption and decryption. This project, developed as part of a Master's dissertation, now incorporates Contextual Entropy Injection to enhance security by adapting encryption based on data patterns and metadata. It provides a robust, flexible, and secure solution for cryptographic research and application.
+A highly configurable, secure, and modern cryptographic system designed for advanced encryption and decryption, integrating classical and post-quantum cryptography with adaptive security features. This project, developed as part of a Master's dissertation, offers a robust framework for protecting sensitive data with cutting-edge techniques.
 Features
-Cryptographic Capabilities
 
-    Multiple Cipher Support: Implements ChaCha20 and AES-GCM encryption algorithms.
-    Contextual Entropy Injection: Adapts encryption keys and transformations based on data entropy characteristics and optional metadata.
-    Advanced Key Derivation: Uses scrypt and HKDF for secure key generation, enhanced with contextual entropy.
-    Memory-Efficient File Encryption: Supports streaming encryption/decryption for large files.
-
-Security Mechanisms
-
-    Constant-Time Operations: Mitigates side-channel attacks with constant-time padding and comparisons.
-    Integrity Checks: Ensures data integrity using HMAC-SHA256.
-    Flexible Key Rotation: Supports fixed-interval and time-based key rotation policies.
-    Adaptive Transformations: Applies data-aware transformations (XOR, rotate, substitute) before encryption.
+    Multiple Cipher Types: Supports ChaCha20, AES-GCM, and Kyber (post-quantum KEM).
+    Post-Quantum Cryptography: Integrates CRYSTALS-Kyber for quantum-resistant encryption (KEM only; signatures like Dilithium are planned for future work).
+    HSM Integration: Mock Hardware Security Module (HSM) support with a placeholder for real PKCS#11 integration.
+    Adaptive Security: Dynamically adjusts security levels (Low, Medium, High, Ultra) based on data size and sensitivity.
+    Enhanced Contextual Entropy: Incorporates Rényi entropy, min-entropy, compression ratio, and environmental context (e.g., timestamp) into key derivation for data-aware security.
+    Compression: Optional zlib compression before encryption to reduce ciphertext size and enhance entropy.
+    Parallel Processing: Multi-threaded encryption/decryption for large files using ThreadPoolExecutor.
+    Statistical Cryptanalysis: Visualizes the avalanche effect to assess cryptographic strength (NIST suite preparatory).
+    Formal Verification: Includes a Z3-based proof of correctness (simplified model) with preparatory TLA+ specifications in comments.
+    Key Rotation: Configurable policies (fixed interval, usage-based, time-based) for key management.
 
 Project Structure
 text
-india-method-cipher/
-├── indiaMethodCipher.py   # Main cipher implementation with Contextual Entropy Injection
-├── unitTest.py            # Unit tests for the cipher
-├── integrationTest.py     # Performance and integration tests
-└── requirements.txt       # Python dependencies
+Enhanced-India-Method-Cipher/
+├── indiaMethodCipher.py    # Core cipher implementation
+├── unitTest.py            # Unit tests for individual components
+├── integrationTest.py     # Integration and performance tests
+├── requirements.txt       # Dependencies
+└── README.md             # This file
 Prerequisites
 
-    Python 3.8 or higher
-    Required libraries:
-        pycryptodome (for ChaCha20, AES-GCM, HMAC, etc.)
-        cryptography (for additional cryptographic primitives)
-        numpy (for entropy analysis in Contextual Entropy Injection)
+    Python: 3.8 or higher
+    Dependencies: Listed in requirements.txt
 
 Installation
 
-    Clone the repository:
+    Clone the Repository:
+    bash
 
+git clone https://github.com/yourusername/Enhanced-India-Method-Cipher.git
+cd Enhanced-India-Method-Cipher
+Set Up a Virtual Environment (optional but recommended):
 bash
-git clone https://github.com/jftheprogrammer/india-method-cipher.git
-cd india-method-cipher
-
-    Install dependencies:
-
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+Install Dependencies:
 bash
-pip install -r requirements.txt
 
-Or manually:
-bash
-pip install pycryptodome cryptography numpy
-Usage Examples
-Basic Encryption
+    pip install -r requirements.txt
+
+Usage
+Basic Encryption/Decryption
 python
-from indiaMethodCipher import EnhancedIndiaMethodCipher, CipherType
+from indiaMethodCipher import EnhancedIndiaMethodCipher, CipherType, SecurityLevel
+import os
 
-# Initialize cipher
+# Generate a 32-byte key
 key = os.urandom(32)
+
+# Initialize the cipher
 cipher = EnhancedIndiaMethodCipher(
     key,
     cipher_type=CipherType.CHACHA20,
-    key_rotation_policy=None
+    security_level=SecurityLevel.MEDIUM,
+    adaptive_security=True
 )
 
-# Encrypt data with metadata
-plaintext = b"Confidential Information"
-metadata = {"author": "Joshua", "date": "2025-03-17"}
-encrypted_data = cipher.encrypt(plaintext, metadata=metadata)
-decrypted_data = cipher.decrypt(encrypted_data, metadata=metadata)
-print(f"Decrypted: {decrypted_data}")
-File Encryption
+# Encrypt text
+plaintext = b"Sensitive Data"
+encrypted = cipher.encrypt(plaintext, compress=True)
+
+# Decrypt text
+decrypted = cipher.decrypt(encrypted)
+print(f"Original: {plaintext}, Decrypted: {decrypted}")
+File Encryption/Decryption
 python
 # Encrypt a file
-metadata = {"author": "Joshua", "date": "2025-03-17"}
-cipher.encrypt_file("input.txt", "encrypted.bin", metadata=metadata)
-cipher.decrypt_file("encrypted.bin", "decrypted.txt", metadata=metadata)
+cipher.encrypt_file("input.txt", "encrypted.bin", compress=True, chunk_size=1024*1024)
 
-Note: The same metadata used for encryption must be provided for decryption due to the contextual entropy injection. In a production system, consider securely storing transformation details with the encrypted data.
-Running Tests
+# Decrypt a file
+cipher.decrypt_file("encrypted.bin", "output.txt")
+Formal Verification
+python
+# Verify cipher correctness
+is_correct = cipher.verify_correctness()
+print(f"Cipher Verified: {is_correct}")
+Avalanche Effect Visualization
+python
+# Visualize the avalanche effect
+cipher.visualize_avalanche_effect(b"Test Data", num_bits=10, output_file="avalanche.png")
+Security Levels
+
+The cipher supports four security levels with corresponding parameters:
+
+    Low: 16-byte key, 1 entropy round, 1 transform round, SHA256
+    Medium: 32-byte key, 3 entropy rounds, 2 transform rounds, SHA256
+    High: 32-byte key, 5 entropy rounds, 3 transform rounds, SHA384
+    Ultra: 32-byte key, 7 entropy rounds, 5 transform rounds, SHA512, post-quantum enabled
+
+Testing
 Unit Tests
 
-Run the unit tests to verify the cipher's functionality:
+Run unit tests to validate individual components:
 bash
 python -m unittest unitTest.py
 
-This will execute tests for basic encryption/decryption, integrity checks, contextual encryption, and file operations.
-Integration and Performance Tests
+Covers:
 
-Run the integration and performance tests to evaluate the cipher's behavior with different scenarios and measure performance:
+    Basic encryption/decryption
+    Compression
+    Parallel file processing
+    Formal verification
+    Integrity checks
+    Post-quantum and HSM functionality
+    Adaptive security
+    Edge cases (e.g., invalid keys, corrupted data)
+
+Integration Tests
+
+Run integration tests for system-wide validation and performance:
 bash
 python integrationTest.py
 
-This generates a crypto_performance.log file with detailed results.
-Performance Benchmarks
+Includes:
 
-The integrationTest.py script includes performance benchmarking for:
+    Comprehensive scenario testing (e.g., small compressed, large adaptive)
+    Performance benchmarking (encryption/decryption times)
+    Stress testing (50MB file)
 
-    Different data sizes (1 KB, 1 MB, 10 MB)
-    Cipher types (ChaCha20, AES-GCM)
-    Encryption and decryption scenarios
+Dependencies
 
-Results are logged to crypto_performance.log for analysis.
-Key Rotation Policies
+    pycryptodome: Cryptographic primitives
+    cryptography: Additional cipher support
+    numpy: Entropy calculations
+    oqspy: Post-quantum Kyber implementation
+    matplotlib: Avalanche effect visualization
+    z3-solver: Formal verification
 
-    FIXED_INTERVAL: Rotates the key after 1000 uses.
-    TIME_BASED: Rotates the key every 24 hours.
-    None: No automatic rotation (manual rotation supported).
+Install via:
+bash
+pip install pycryptodome cryptography numpy oqspy matplotlib z3-solver
+Limitations
 
-Security Considerations
+    HSM: Currently uses a mock implementation; real PKCS#11 requires additional setup.
+    Post-Quantum: Only Kyber KEM is implemented; signatures (e.g., Dilithium) are not included.
+    NIST Suite: Preparatory only; full statistical testing requires an external library.
+    Formal Verification: Simplified Z3 model; full TLA+ implementation needs separate tools.
 
-    Key Length: Uses 256-bit keys for robust security.
-    Contextual Entropy: Enhances key derivation and transformations based on data patterns, increasing resistance to pattern-based attacks.
-    Metadata Dependency: Decryption requires the same metadata used during encryption. Future improvements could embed transformation details in the ciphertext.
-    Side-Channel Resistance: Implements constant-time operations to prevent timing attacks.
+Future Work
 
-Dissertation Research Points
+    Integrate real HSM support with PKCS#11.
+    Add post-quantum signatures (e.g., Dilithium).
+    Implement the full NIST Statistical Test Suite.
+    Enhance formal verification with executable TLA+ or deeper Z3 models.
+    Develop a CLI or GUI for easier interaction.
 
-    Advanced Cryptographic Design: Integration of contextual entropy into traditional ciphers.
-    Side-Channel Attack Mitigation: Use of constant-time operations and adaptive transformations.
-    Performance Analysis: Benchmarking across different data sizes and cipher types.
-    Multi-Algorithm Frameworks: Support for ChaCha20 and AES-GCM.
-    Adaptive Key Management: Contextual key derivation and rotation strategies.
+Contributing
 
-Potential Future Improvements
+Contributions are welcome! Please:
 
-    Embedded Transformation Data: Store transformation details securely in the ciphertext to eliminate metadata dependency.
-    Post-Quantum Cryptography: Adapt the cipher for quantum-resistant algorithms.
-    Hardware Acceleration: Integrate with Hardware Security Modules (HSM) for improved performance and security.
-    Extended Authentication: Add support for authenticated encryption beyond HMAC.
+    Fork the repository.
+    Create a feature branch (git checkout -b feature/your-feature).
+    Commit changes (git commit -m "Add your feature").
+    Push to the branch (git push origin feature/your-feature).
+    Open a pull request.
 
 License
 
-MIT License
-Author
+This project is licensed under the MIT License. See the LICENSE file for details.
+Acknowledgments
 
-Joshua L. Fernandez
+    Built as part of a Master's dissertation at [Your University].
+    Inspired by advancements in post-quantum cryptography and adaptive security.
 
-Master's Dissertation Project
-References
-
-    NIST Cryptographic Standards
-    Modern Cryptography Principles (e.g., Schneier, Ferguson)
-    Side-Channel Attack Mitigation Techniques
+This README provides a clear overview of your project, its capabilities, and how to use it, without referencing the real-life applications we discussed. It’s structured to be professional and informative, suitable for academic or public sharing. Let me know if you’d like to adjust anything (e.g., add a specific license, include your name/university, or tweak the tone)!
