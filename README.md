@@ -1,138 +1,142 @@
-# Enhanced India Method Cipher
+Enhanced India Method Cipher
+Overview
 
-## Overview
-The Enhanced India Method Cipher is an advanced cryptographic implementation designed for secure data encryption and decryption. This project provides a robust, flexible, and secure encryption solution with multiple features to support advanced cryptographic research.
+The Enhanced India Method Cipher is an advanced cryptographic implementation designed for secure data encryption and decryption. This project, developed as part of a Master's dissertation, now incorporates Contextual Entropy Injection to enhance security by adapting encryption based on data patterns and metadata. It provides a robust, flexible, and secure solution for cryptographic research and application.
+Features
+Cryptographic Capabilities
 
-## Features
+    Multiple Cipher Support: Implements ChaCha20 and AES-GCM encryption algorithms.
+    Contextual Entropy Injection: Adapts encryption keys and transformations based on data entropy characteristics and optional metadata.
+    Advanced Key Derivation: Uses scrypt and HKDF for secure key generation, enhanced with contextual entropy.
+    Memory-Efficient File Encryption: Supports streaming encryption/decryption for large files.
 
-### Cryptographic Capabilities
-- Multiple Cipher Support (ChaCha20, AES-GCM)
-- Advanced Key Derivation using Scrypt
-- Flexible Key Rotation Policies
-- Memory-Efficient File Encryption
-- Side-Channel Attack Mitigation
+Security Mechanisms
 
-### Security Mechanisms
-- Constant-time Padding
-- Comprehensive Integrity Checks
-- Detailed Logging
-- Adaptive Key Management
+    Constant-Time Operations: Mitigates side-channel attacks with constant-time padding and comparisons.
+    Integrity Checks: Ensures data integrity using HMAC-SHA256.
+    Flexible Key Rotation: Supports fixed-interval and time-based key rotation policies.
+    Adaptive Transformations: Applies data-aware transformations (XOR, rotate, substitute) before encryption.
 
-## Project Structure
-```
+Project Structure
+text
 india-method-cipher/
-│
-├── src/
-│   └── IndiaMethodCipher.py        # Main cryptographic implementation
-│
-├── tests/
-│   ├── unitTest.py                 # Comprehensive unit tests
-│   └── integrationTest.py          # Performance and integration tests
-│
-├── README.md                       # Project documentation
-└── requirements.txt                # Python dependencies
-```
+├── indiaMethodCipher.py   # Main cipher implementation with Contextual Entropy Injection
+├── unitTest.py            # Unit tests for the cipher
+├── integrationTest.py     # Performance and integration tests
+└── requirements.txt       # Python dependencies
+Prerequisites
 
-## Prerequisites
-- Python 3.8+
-- PyCryptodome Library
-- unittest module
+    Python 3.8 or higher
+    Required libraries:
+        pycryptodome (for ChaCha20, AES-GCM, HMAC, etc.)
+        cryptography (for additional cryptographic primitives)
+        numpy (for entropy analysis in Contextual Entropy Injection)
 
-## Installation
+Installation
 
-1. Clone the repository:
-```bash
+    Clone the repository:
+
+bash
 git clone https://github.com/jftheprogrammer/india-method-cipher.git
 cd india-method-cipher
-```
 
-2. Install dependencies:
-```bash
+    Install dependencies:
+
+bash
 pip install -r requirements.txt
-```
 
-## Usage Examples
-
-### Basic Encryption
-```python
-from IndiaMethodCipher import EnhancedIndiaMethodCipher, CipherType
+Or manually:
+bash
+pip install pycryptodome cryptography numpy
+Usage Examples
+Basic Encryption
+python
+from indiaMethodCipher import EnhancedIndiaMethodCipher, CipherType
 
 # Initialize cipher
 key = os.urandom(32)
 cipher = EnhancedIndiaMethodCipher(
-    key, 
-    cipher_type=CipherType.CHACHA20
+    key,
+    cipher_type=CipherType.CHACHA20,
+    key_rotation_policy=None
 )
 
-# Encrypt data
+# Encrypt data with metadata
 plaintext = b"Confidential Information"
-encrypted_data = cipher.encrypt(plaintext)
-decrypted_data = cipher.decrypt(encrypted_data)
-```
+metadata = {"author": "Joshua", "date": "2025-03-17"}
+encrypted_data = cipher.encrypt(plaintext, metadata=metadata)
+decrypted_data = cipher.decrypt(encrypted_data, metadata=metadata)
+print(f"Decrypted: {decrypted_data}")
+File Encryption
+python
+# Encrypt a file
+metadata = {"author": "Joshua", "date": "2025-03-17"}
+cipher.encrypt_file("input.txt", "encrypted.bin", metadata=metadata)
+cipher.decrypt_file("encrypted.bin", "decrypted.txt", metadata=metadata)
 
-### File Encryption
-```python
-# Encrypt entire file
-cipher.encrypt_file("input.txt", "encrypted.bin")
-cipher.decrypt_file("encrypted.bin", "decrypted.txt")
-```
+Note: The same metadata used for encryption must be provided for decryption due to the contextual entropy injection. In a production system, consider securely storing transformation details with the encrypted data.
+Running Tests
+Unit Tests
 
-## Running Tests
+Run the unit tests to verify the cipher's functionality:
+bash
+python -m unittest unitTest.py
 
-### Unit Tests
-```bash
-python -m unittest tests/unitTest.py
-```
+This will execute tests for basic encryption/decryption, integrity checks, contextual encryption, and file operations.
+Integration and Performance Tests
 
-### Integration Tests
-```bash
-python tests/integrationTest.py
-```
+Run the integration and performance tests to evaluate the cipher's behavior with different scenarios and measure performance:
+bash
+python integrationTest.py
 
-## Performance Benchmarks
-The `integrationTest.py` script includes comprehensive performance benchmarking across different:
-- Cipher Types
-- Data Sizes
-- Encryption Scenarios
+This generates a crypto_performance.log file with detailed results.
+Performance Benchmarks
 
-## Key Rotation Policies
-- `FIXED_INTERVAL`: Rotate key after fixed number of uses
-- `TIME_BASED`: Rotate key periodically
-- `USAGE_BASED`: Custom rotation strategy
+The integrationTest.py script includes performance benchmarking for:
 
-## Security Considerations
-- 256-bit key length
-- Adaptive key derivation
-- Side-channel attack resistance
-- Constant-time comparisons
+    Different data sizes (1 KB, 1 MB, 10 MB)
+    Cipher types (ChaCha20, AES-GCM)
+    Encryption and decryption scenarios
 
-## Logging
-Comprehensive logging is implemented with configurable log levels:
-- DEBUG: Detailed debugging information
-- INFO: General operational events
-- ERROR: Error tracking
+Results are logged to crypto_performance.log for analysis.
+Key Rotation Policies
 
-## Dissertation Research Points
-1. Advanced Cryptographic Design
-2. Side-Channel Attack Mitigation
-3. Performance Analysis
-4. Multi-Algorithm Cryptographic Frameworks
-5. Adaptive Key Management Strategies
+    FIXED_INTERVAL: Rotates the key after 1000 uses.
+    TIME_BASED: Rotates the key every 24 hours.
+    None: No automatic rotation (manual rotation supported).
 
-## Potential Future Improvements
-- Hardware Security Module (HSM) Integration
-- Post-Quantum Cryptography Adaptation
-- Extended Authentication Mechanisms
-- Enhanced Key Management
+Security Considerations
 
-## License
-MIT
+    Key Length: Uses 256-bit keys for robust security.
+    Contextual Entropy: Enhances key derivation and transformations based on data patterns, increasing resistance to pattern-based attacks.
+    Metadata Dependency: Decryption requires the same metadata used during encryption. Future improvements could embed transformation details in the ciphertext.
+    Side-Channel Resistance: Implements constant-time operations to prevent timing attacks.
 
-## Author
+Dissertation Research Points
+
+    Advanced Cryptographic Design: Integration of contextual entropy into traditional ciphers.
+    Side-Channel Attack Mitigation: Use of constant-time operations and adaptive transformations.
+    Performance Analysis: Benchmarking across different data sizes and cipher types.
+    Multi-Algorithm Frameworks: Support for ChaCha20 and AES-GCM.
+    Adaptive Key Management: Contextual key derivation and rotation strategies.
+
+Potential Future Improvements
+
+    Embedded Transformation Data: Store transformation details securely in the ciphertext to eliminate metadata dependency.
+    Post-Quantum Cryptography: Adapt the cipher for quantum-resistant algorithms.
+    Hardware Acceleration: Integrate with Hardware Security Modules (HSM) for improved performance and security.
+    Extended Authentication: Add support for authenticated encryption beyond HMAC.
+
+License
+
+MIT License
+Author
+
 Joshua L. Fernandez
-Master's Dissertation Project
 
-## References
-- NIST Cryptographic Standards
-- Modern Cryptography Principles
-- Side-Channel Attack Mitigation Techniques
+Master's Dissertation Project
+References
+
+    NIST Cryptographic Standards
+    Modern Cryptography Principles (e.g., Schneier, Ferguson)
+    Side-Channel Attack Mitigation Techniques
