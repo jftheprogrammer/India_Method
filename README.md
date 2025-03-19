@@ -1,4 +1,4 @@
-# Enhanced India Method Cipher
+# Enhanced India Method Cipher V1.9
 
 A robust, post-quantum-ready cryptographic system with hardware security module (HSM) support, advanced entropy analysis, and formal verification.
 
