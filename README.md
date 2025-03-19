@@ -1,168 +1,135 @@
-Enhanced India Method Cipher
+# Enhanced India Method Cipher
 
-A highly configurable, secure, and modern cryptographic system designed for advanced encryption and decryption, integrating classical and post-quantum cryptography with adaptive security features. This project, developed as part of a Master's dissertation, offers a robust framework for protecting sensitive data with cutting-edge techniques.
-Features
+A robust, post-quantum-ready cryptographic system with hardware security module (HSM) support, advanced entropy analysis, and formal verification.
 
-    Multiple Cipher Types: Supports ChaCha20, AES-GCM, and Kyber (post-quantum KEM).
-    Post-Quantum Cryptography: Integrates CRYSTALS-Kyber for quantum-resistant encryption (KEM only; signatures like Dilithium are planned for future work).
-    HSM Integration: Mock Hardware Security Module (HSM) support with a placeholder for real PKCS#11 integration.
-    Adaptive Security: Dynamically adjusts security levels (Low, Medium, High, Ultra) based on data size and sensitivity.
-    Enhanced Contextual Entropy: Incorporates Rényi entropy, min-entropy, compression ratio, and environmental context (e.g., timestamp) into key derivation for data-aware security.
-    Compression: Optional zlib compression before encryption to reduce ciphertext size and enhance entropy.
-    Parallel Processing: Multi-threaded encryption/decryption for large files using ThreadPoolExecutor.
-    Statistical Cryptanalysis: Visualizes the avalanche effect to assess cryptographic strength (NIST suite preparatory).
-    Formal Verification: Includes a Z3-based proof of correctness (simplified model) with preparatory TLA+ specifications in comments.
-    Key Rotation: Configurable policies (fixed interval, usage-based, time-based) for key management.
+## Overview
 
-Project Structure
-text
-Enhanced-India-Method-Cipher/
-├── indiaMethodCipher.py    # Core cipher implementation
-├── unitTest.py            # Unit tests for individual components
-├── integrationTest.py     # Integration and performance tests
-├── requirements.txt       # Dependencies
-└── README.md             # This file
-Prerequisites
+This project implements an enhanced version of the India Method Cipher (`EnhancedIndiaMethodCipher`), a versatile encryption system featuring:
 
-    Python: 3.8 or higher
-    Dependencies: Listed in requirements.txt
+- **Symmetric Encryption**: Supports ChaCha20, AES-GCM, and Kyber (post-quantum KEM).
+- **HSM Integration**: Real PKCS#11 support for hardware-accelerated cryptography.
+- **Post-Quantum Signatures**: Dilithium signatures for quantum-resistant integrity.
+- **NIST Statistical Tests**: Comprehensive randomness testing per NIST SP 800-22.
+- **Formal Verification**: Z3 solver and executable TLA+ specifications for correctness.
+- **Adaptive Security**: Dynamically adjusts security levels based on data sensitivity.
+- **File Encryption**: Efficient parallel processing for large files.
 
-Installation
+The codebase includes unit tests (`unitTest.py`) and integration/performance tests (`integrationTest.py`) to ensure reliability and performance.
 
-    Clone the Repository:
-    bash
+## Features
 
-git clone https://github.com/yourusername/Enhanced-India-Method-Cipher.git
-cd Enhanced-India-Method-Cipher
-Set Up a Virtual Environment (optional but recommended):
-bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-Install Dependencies:
-bash
+- **Cipher Types**: ChaCha20, AES-GCM, Kyber.
+- **Security Levels**: Low, Medium, High, Ultra (with post-quantum enhancements).
+- **Key Rotation**: Fixed interval, usage-based, or time-based policies.
+- **Contextual Entropy**: Advanced data pattern analysis for key derivation.
+- **Compression**: Optional zlib compression for encrypted data.
+- **Visualization**: Avalanche effect analysis with Matplotlib.
 
-    pip install -r requirements.txt
+## Requirements
 
-Usage
-Basic Encryption/Decryption
-python
+### Dependencies
+Install the required Python packages:
+```bash
+pip install pycryptodome cryptography numpy oqspy matplotlib z3-solver python-pkcs11 scipy
+```
+
+### Additional Setup
+
+- **HSM**: Configure a PKCS#11-compatible HSM (e.g., SoftHSM2):
+  - Install SoftHSM2: `sudo apt-get install softhsm2` (Ubuntu) or equivalent.
+  - Initialize a token: `softhsm2-util --init-token --slot 0 --label "MyToken" --pin 1234 --so-pin 123456`.
+  - Update `hsm_config` in code if using a different library path or PIN.
+- **TLA+**: For formal verification:
+  - Install TLA+ Toolbox or TLC: Download from TLA+ Tools.
+  - Ensure `tlc` is in your PATH: `java -jar tlc.jar`.
+
+## Installation
+
+1. Clone or download this repository:
+```bash
+git clone <repository-url>
+cd <repository-directory>
+```
+2. Install dependencies (see above).
+3. Configure HSM if using (`hsm_enabled=True`).
+
+## Usage
+
+### Basic Example
+```python
 from indiaMethodCipher import EnhancedIndiaMethodCipher, CipherType, SecurityLevel
 import os
 
-# Generate a 32-byte key
 key = os.urandom(32)
-
-# Initialize the cipher
 cipher = EnhancedIndiaMethodCipher(
     key,
     cipher_type=CipherType.CHACHA20,
-    security_level=SecurityLevel.MEDIUM,
-    adaptive_security=True
+    security_level=SecurityLevel.ULTRA,
+    hsm_enabled=True,
+    hsm_config={"lib_path": "/usr/lib/softhsm/libsofthsm2.so", "pin": "1234"}
 )
 
-# Encrypt text
-plaintext = b"Sensitive Data"
+plaintext = b"Secret Message"
 encrypted = cipher.encrypt(plaintext, compress=True)
-
-# Decrypt text
 decrypted = cipher.decrypt(encrypted)
-print(f"Original: {plaintext}, Decrypted: {decrypted}")
-File Encryption/Decryption
-python
-# Encrypt a file
-cipher.encrypt_file("input.txt", "encrypted.bin", compress=True, chunk_size=1024*1024)
+print(f"Decrypted: {decrypted}")  # Output: b"Secret Message"
 
-# Decrypt a file
+# Verify correctness
+assert cipher.verify_correctness(), "Z3 verification failed"
+assert cipher.verify_with_tla(), "TLA+ verification failed"
+assert cipher.nist_suite.run_tests(encrypted), "NIST suite failed"
+```
+
+### File Encryption
+```python
+cipher.encrypt_file("input.txt", "encrypted.bin", metadata={"type": "sensitive"}, compress=True)
 cipher.decrypt_file("encrypted.bin", "output.txt")
-Formal Verification
-python
-# Verify cipher correctness
-is_correct = cipher.verify_correctness()
-print(f"Cipher Verified: {is_correct}")
-Avalanche Effect Visualization
-python
-# Visualize the avalanche effect
+```
+
+### Visualization
+```python
 cipher.visualize_avalanche_effect(b"Test Data", num_bits=10, output_file="avalanche.png")
-Security Levels
+```
 
-The cipher supports four security levels with corresponding parameters:
+## Testing
 
-    Low: 16-byte key, 1 entropy round, 1 transform round, SHA256
-    Medium: 32-byte key, 3 entropy rounds, 2 transform rounds, SHA256
-    High: 32-byte key, 5 entropy rounds, 3 transform rounds, SHA384
-    Ultra: 32-byte key, 7 entropy rounds, 5 transform rounds, SHA512, post-quantum enabled
+### Unit Tests
 
-Testing
-Unit Tests
-
-Run unit tests to validate individual components:
-bash
+Run unit tests to verify individual components:
+```bash
 python -m unittest unitTest.py
+```
 
-Covers:
+- Covers encryption/decryption, HSM, Dilithium, NIST suite, formal verification, and edge cases.
 
-    Basic encryption/decryption
-    Compression
-    Parallel file processing
-    Formal verification
-    Integrity checks
-    Post-quantum and HSM functionality
-    Adaptive security
-    Edge cases (e.g., invalid keys, corrupted data)
+### Integration Tests
 
-Integration Tests
-
-Run integration tests for system-wide validation and performance:
-bash
+Run integration and performance tests:
+```bash
 python integrationTest.py
+```
 
-Includes:
+- Includes comprehensive scenarios, performance benchmarks, and a stress test with a 50MB file.
 
-    Comprehensive scenario testing (e.g., small compressed, large adaptive)
-    Performance benchmarking (encryption/decryption times)
-    Stress testing (50MB file)
+## Project Structure
 
-Dependencies
+- `indiaMethodCipher.py`: Core cipher implementation.
+- `unitTest.py`: Unit tests for individual functionalities.
+- `integrationTest.py`: Integration, performance, and stress tests.
 
-    pycryptodome: Cryptographic primitives
-    cryptography: Additional cipher support
-    numpy: Entropy calculations
-    oqspy: Post-quantum Kyber implementation
-    matplotlib: Avalanche effect visualization
-    z3-solver: Formal verification
+## Notes
 
-Install via:
-bash
-pip install pycryptodome cryptography numpy oqspy matplotlib z3-solver
-Limitations
+- **HSM Configuration**: Adjust `hsm_config` in tests if your HSM setup differs (e.g., different `lib_path` or `pin`).
+- **NIST Suite**: Requires at least 1M bits of data for reliable results (125KB+).
+- **Performance**: HSM and Dilithium may increase latency; tune `chunk_size` for large files.
+- **TLA+**: Simplified model; extend `verify_with_tla` for deeper analysis.
 
-    HSM: Currently uses a mock implementation; real PKCS#11 requires additional setup.
-    Post-Quantum: Only Kyber KEM is implemented; signatures (e.g., Dilithium) are not included.
-    NIST Suite: Preparatory only; full statistical testing requires an external library.
-    Formal Verification: Simplified Z3 model; full TLA+ implementation needs separate tools.
+## Contributing
 
-Future Work
+Feel free to submit issues or pull requests for enhancements, bug fixes, or additional test cases.
 
-    Integrate real HSM support with PKCS#11.
-    Add post-quantum signatures (e.g., Dilithium).
-    Implement the full NIST Statistical Test Suite.
-    Enhance formal verification with executable TLA+ or deeper Z3 models.
-    Develop a CLI or GUI for easier interaction.
+## License
 
-Contributing
+This project is licensed under the MIT License. See LICENSE file for details.
 
-Contributions are welcome! Please:
-
-    Fork the repository.
-    Create a feature branch (git checkout -b feature/your-feature).
-    Commit changes (git commit -m "Add your feature").
-    Push to the branch (git push origin feature/your-feature).
-    Open a pull request.
-
-License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-Acknowledgments
-
-    Built as part of a Master's dissertation at Don Mariano Marcos Memorial State University.
-    Inspired by advancements in post-quantum cryptography and adaptive security.
+Generated on March 19, 2025
