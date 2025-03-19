@@ -22,7 +22,9 @@ class CryptoPerformanceAnalysis:
             {"name": "Large Adaptive", "size": 10 * 1024 * 1024, "cipher_type": CipherType.CHACHA20, "adaptive_security": True},
             {"name": "PQ Compressed", "size": 2048, "cipher_type": CipherType.KYBER, "pq_enabled": True, "compress": True},
             {"name": "HSM Large", "size": 2 * 1024 * 1024, "cipher_type": CipherType.AES_GCM, "hsm_enabled": True},
-            {"name": "Ultra Security", "size": 1024 * 1024, "cipher_type": CipherType.CHACHA20, "security_level": SecurityLevel.ULTRA}
+            {"name": "Ultra Security", "size": 1024 * 1024, "cipher_type": CipherType.CHACHA20, "security_level": SecurityLevel.ULTRA},
+            {"name": "HSM PKCS#11", "size": 1024, "cipher_type": CipherType.AES_GCM, "hsm_enabled": True},
+            {"name": "Dilithium Signed", "size": 2048, "cipher_type": CipherType.CHACHA20, "security_level": SecurityLevel.ULTRA}
         ]
 
     def run_comprehensive_test(self):
@@ -40,7 +42,8 @@ class CryptoPerformanceAnalysis:
                     security_level=scenario.get('security_level', SecurityLevel.MEDIUM),
                     adaptive_security=scenario.get('adaptive_security', False),
                     pq_enabled=scenario.get('pq_enabled', False),
-                    hsm_enabled=scenario.get('hsm_enabled', False)
+                    hsm_enabled=scenario.get('hsm_enabled', False),
+                    hsm_config={"lib_path": "/usr/lib/softhsm/libsofthsm2.so", "pin": "1234"} if scenario.get('hsm_enabled') else None
                 )
                 input_file = os.path.join(self.test_data_dir, f"{scenario['name']}_input.bin")
                 encrypted_file = os.path.join(self.test_data_dir, f"{scenario['name']}_encrypted.bin")
@@ -54,8 +57,13 @@ class CryptoPerformanceAnalysis:
                     decrypted_data = f.read()
                 assert decrypted_data == test_data, f"Data mismatch in {scenario['name']}"
                 self.logger.info(f"✓ Scenario {scenario['name']} Passed Successfully")
-                # Additional Verification
-                assert cipher.verify_correctness(), f"Formal verification failed for {scenario['name']}"
+                # Additional Verifications
+                assert cipher.verify_correctness(), f"Z3 verification failed for {scenario['name']}"
+                assert cipher.verify_with_tla(), f"TLA+ verification failed for {scenario['name']}"
+                if scenario['size'] >= 125000:  # 1M bits for NIST
+                    with open(encrypted_file, 'rb') as f:
+                        encrypted_data = f.read()
+                    assert cipher.nist_suite.run_tests(encrypted_data), f"NIST suite failed for {scenario['name']}"
             except Exception as e:
                 self.logger.error(f"Test Scenario Failed: {scenario['name']} - {str(e)}")
                 raise
@@ -73,7 +81,8 @@ class CryptoPerformanceAnalysis:
                 security_level=scenario.get('security_level', SecurityLevel.MEDIUM),
                 adaptive_security=scenario.get('adaptive_security', False),
                 pq_enabled=scenario.get('pq_enabled', False),
-                hsm_enabled=scenario.get('hsm_enabled', False)
+                hsm_enabled=scenario.get('hsm_enabled', False),
+                hsm_config={"lib_path": "/usr/lib/softhsm/libsofthsm2.so", "pin": "1234"} if scenario.get('hsm_enabled') else None
             )
             # In-memory benchmark
             start_time = datetime.now()
@@ -123,6 +132,16 @@ class CryptoPerformanceAnalysis:
             decrypted_data = f.read()
         self.assertEqual(decrypted_data, large_data)
         self.logger.info("✓ Stress Test Passed Successfully")
+        # Additional verification
+        with open(encrypted_file, 'rb') as f:
+            encrypted_data = f.read()
+        assert cipher.nist_suite.run_tests(encrypted_data), "NIST suite failed in stress test"
+        assert cipher.verify_correctness(), "Z3 verification failed in stress test"
+        assert cipher.verify_with_tla(), "TLA+ verification failed in stress test"
+
+    def assertEqual(self, a, b):
+        if a != b:
+            raise AssertionError(f"Values not equal: {a} != {b}")
 
 def main():
     crypto_test = CryptoPerformanceAnalysis()
@@ -130,6 +149,7 @@ def main():
         crypto_test.run_comprehensive_test()
         crypto_test.performance_benchmark()
         crypto_test.stress_test()
+        print("All tests completed successfully")
     except Exception as e:
         print(f"Test Suite Failed: {e}")
         sys.exit(1)
