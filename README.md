@@ -164,7 +164,5 @@ License
 This project is licensed under the MIT License. See the LICENSE file for details.
 Acknowledgments
 
-    Built as part of a Master's dissertation at [Your University].
+    Built as part of a Master's dissertation at Don Mariano Marcos Memorial State University.
     Inspired by advancements in post-quantum cryptography and adaptive security.
-
-This README provides a clear overview of your project, its capabilities, and how to use it, without referencing the real-life applications we discussed. It’s structured to be professional and informative, suitable for academic or public sharing. Let me know if you’d like to adjust anything (e.g., add a specific license, include your name/university, or tweak the tone)!
